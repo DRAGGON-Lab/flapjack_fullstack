@@ -1,0 +1,6 @@
+.env
+.env.*
+!.env.example
+flapjack_api/.env.dev
+flapjack_frontend/.env.dev
+*.dump

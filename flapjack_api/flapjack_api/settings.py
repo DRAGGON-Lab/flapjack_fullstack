@@ -1,22 +1,22 @@
 import os
+from pathlib import Path
 
-# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from .env import env_bool, env_list, env_str
 
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
+APP_ENV = env_str("APP_ENV", "development")
+IS_PRODUCTION = APP_ENV == "production"
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'xb22!w(2y430$dk33y=jz$s@me!l9x!2i1a7mb)b=pp3b_!^2u'
+SECRET_KEY = env_str("DJANGO_SECRET_KEY", required=IS_PRODUCTION, default="unsafe-dev-secret-key")
+DEBUG = env_bool("DJANGO_DEBUG", default=not IS_PRODUCTION)
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+if IS_PRODUCTION and DEBUG:
+    raise RuntimeError("DJANGO_DEBUG cannot be enabled in production")
 
-ALLOWED_HOSTS = ["*"]
-
-
-# Application definition
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+if IS_PRODUCTION and not ALLOWED_HOSTS:
+    raise RuntimeError("DJANGO_ALLOWED_HOSTS cannot be empty in production")
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -49,8 +49,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ORIGIN_ALLOW_ALL = True
-
 ROOT_URLCONF = 'flapjack_api.urls'
 
 TEMPLATES = [
@@ -71,70 +69,61 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'flapjack_api.wsgi.application'
 
+DB_ENGINE = env_str("DB_ENGINE", "django.db.backends.postgresql")
+DB_NAME = env_str("DB_NAME", "registry")
+DB_USER = env_str("DB_USER", "postgres")
+DB_PASSWORD = env_str("DB_PASSWORD", default="", required=IS_PRODUCTION)
+DB_HOST = env_str("DB_HOST", "db")
+DB_PORT = env_str("DB_PORT", "5432")
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'registry',
-        'USER': 'guillermo',
-        'PASSWORD': '123456',
-        'HOST': 'db',
-        'PORT': '5432',
+        'ENGINE': DB_ENGINE,
+        'NAME': DB_NAME,
+        'USER': DB_USER,
+        'PASSWORD': DB_PASSWORD,
+        'HOST': DB_HOST,
+        'PORT': DB_PORT,
     }
 }
 
-
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_L10N = True
-
 USE_TZ = True
 
-
-# Static files
 STATIC_URL = '/static/'
 
-# rest framework config
+CORS_ORIGIN_ALLOW_ALL = env_bool("DJANGO_CORS_ALLOW_ALL", default=not IS_PRODUCTION)
+CORS_ALLOWED_ORIGINS = env_list("DJANGO_CORS_ALLOWED_ORIGINS", default=[])
+if IS_PRODUCTION and CORS_ORIGIN_ALLOW_ALL:
+    raise RuntimeError("DJANGO_CORS_ALLOW_ALL cannot be enabled in production")
+
 REST_FRAMEWORK = {
-    'DEFAULT_FILTER_BACKENDS': (
-        'rest_framework_filters.backends.RestFrameworkFilterBackend',
-    ),
+    'DEFAULT_FILTER_BACKENDS': ('rest_framework_filters.backends.RestFrameworkFilterBackend',),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 100,
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
-    ]
+    'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework_simplejwt.authentication.JWTAuthentication'],
+    'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
 }
+
+REDIS_HOST = env_str("REDIS_HOST", "redis")
+REDIS_PORT = int(env_str("REDIS_PORT", "6379"))
 
 ASGI_APPLICATION = "flapjack_api.routing.application"
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [('redis', 6379)],
+            'hosts': [(REDIS_HOST, REDIS_PORT)],
         },
     },
 }
