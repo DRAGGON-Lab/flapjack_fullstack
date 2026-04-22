@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: flapjack_api
+    services:
+      postgres:
+        image: postgres:12
+        env:
+          POSTGRES_DB: registry
+          POSTGRES_USER: flapjack
+          POSTGRES_PASSWORD: flapjack
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U flapjack -d registry"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      APP_ENV: development
+      DJANGO_DEBUG: "1"
+      DJANGO_SECRET_KEY: ci-unsafe-secret
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      DJANGO_CORS_ALLOW_ALL: "1"
+      DB_ENGINE: django.db.backends.postgresql
+      DB_NAME: registry
+      DB_USER: flapjack
+      DB_PASSWORD: flapjack
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      REDIS_HOST: localhost
+      REDIS_PORT: "6379"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.7'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Django checks
+        run: python manage.py check
+      - name: Run migrations
+        run: python manage.py migrate --noinput
+      - name: Run backend tests
+        run: python manage.py test accounts
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: flapjack_frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '14'
+          cache: npm
+          cache-dependency-path: flapjack_frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build frontend
+        run: npm run build

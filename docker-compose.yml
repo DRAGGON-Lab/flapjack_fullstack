@@ -1,67 +1,93 @@
-version: "3.3"
+version: "3.8"
 
 services:
   web:
     container_name: flapjack_front_together
     build:
-      context: ./flapjack_frontend  # Adjust this path to your frontend directory
+      context: ./flapjack_frontend
       args:
         app_env: development
     ports:
-      - '3000:3000'
+      - "${FRONTEND_PORT:-3000}:3000"
     environment:
       - NODE_ENV=development
-    env_file:
-      - ./flapjack_frontend/.env.dev  # Adjust path as needed
+      - REACT_APP_HTTP_API=${REACT_APP_HTTP_API:-http://localhost:8000/api/}
+      - REACT_APP_WS_API=${REACT_APP_WS_API:-ws://localhost:8000/ws/}
     volumes:
-      - './flapjack_frontend:/usr/src/app'
-      - '/usr/src/app/node_modules'
+      - ./flapjack_frontend:/usr/src/app
+      - /usr/src/app/node_modules
     stdin_open: true
     depends_on:
-      - flapjack_api
+      flapjack_api:
+        condition: service_healthy
 
   flapjack_api:
     container_name: flap_api
     restart: always
-    build: 
-      context: ./flapjack_api  # Adjust this path to your backend directory
+    build:
+      context: ./flapjack_api
     volumes:
       - ./flapjack_api:/var/app/flap
-    expose:
-      - "8000"
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       - PYTHONPATH=/var/app/flapjack_api
+      - APP_ENV=${APP_ENV:-development}
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-1}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-unsafe-dev-secret-key}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      - DJANGO_CORS_ALLOW_ALL=${DJANGO_CORS_ALLOW_ALL:-1}
+      - DJANGO_CORS_ALLOWED_ORIGINS=${DJANGO_CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      - DB_ENGINE=${DB_ENGINE:-django.db.backends.postgresql}
+      - DB_NAME=${DB_NAME:-registry}
+      - DB_USER=${DB_USER:-flapjack}
+      - DB_PASSWORD=${DB_PASSWORD:-change-me}
+      - DB_HOST=${DB_HOST:-db}
+      - DB_PORT=${DB_PORT:-5432}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
     command: gunicorn flapjack_api.asgi:application -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 --timeout 3600
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   db:
     container_name: flap_db
     restart: always
     image: postgres:12.1
     ports:
-      - "5433:5433"
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      POSTGRES_DB: registry
-      POSTGRES_USER: guillermo
-      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: ${POSTGRES_DB:-registry}
+      POSTGRES_USER: ${POSTGRES_USER:-flapjack}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
     volumes:
-      - db:/var/pg/data
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-flapjack} -d ${POSTGRES_DB:-registry}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
-    image: redis
+    image: redis:7-alpine
     volumes:
       - redis:/data
     ports:
-      - 6379
+      - "${REDIS_PORT:-6379}:6379"
     healthcheck:
-      test: redis-cli ping
-      interval: 5m
-      timeout: 30s
-      retries: 30
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
 
 volumes:
   redis:
