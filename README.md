@@ -4,26 +4,14 @@ Flapjack Fullstack is the deployment and development repository for the Flapjack
 
 This repository brings together:
 
-- `flapjack_api`: Django/Channels backend, REST API, authentication, and websocket endpoints
+- `flapjack_api`: Django/Channels backend, REST API, authentication, websocket endpoints
 - `flapjack_frontend`: React frontend
-- `docker-compose.yml`: local orchestration for the app stack
-
-## Purpose
-
-This repository exists to make Flapjack runnable as a single system during development and to provide the foundation for a production-ready deployment.
-
-The application currently supports:
-
-- user registration, login, token refresh, logout, and user info retrieval
-- study, assay, sample, vector, strain, media, signal, measurement, and related registry operations
-- websocket-backed analysis, plotting, and registry upload flows
-- programmatic access through a documented REST and websocket API
+- `docker-compose.yml`: local orchestration for frontend, backend, PostgreSQL, and Redis
 
 ## Current stack
 
 ### Backend
-- Python 3.7 container
-- Django 3.0.5
+- Python / Django 3.0.x
 - Django REST Framework
 - Channels + Redis channel layer
 - JWT authentication via `djangorestframework-simplejwt`
@@ -41,113 +29,81 @@ The application currently supports:
 - PostgreSQL 12
 - Redis
 
-## Repository layout
+## Quick start (local development)
 
-```text
-.
-├── flapjack_api/
-│   ├── flapjack_api/        # Django project config, ASGI/WSGI, routing, settings
-│   ├── accounts/            # Authentication endpoints
-│   ├── registry/            # Core data registry API
-│   ├── analysis/            # Analysis services / websocket handlers
-│   ├── plot/                # Plot services / websocket handlers
-│   ├── requirements.txt
-│   └── Dockerfile
-├── flapjack_frontend/
-│   ├── src/
-│   ├── public/
-│   ├── package.json
-│   └── Dockerfile
-└── docker-compose.yml
-Local development
-Prerequisites
-Docker
-Docker Compose
-Frontend environment file
+### 1) Create environment files
+
+```bash
+cp .env.example .env
+cp flapjack_frontend/.env.dev.example flapjack_frontend/.env.dev
 ```
 
-Create flapjack_frontend/.env.dev with:
+Populate `.env` with local-only secrets and credentials.
 
-REACT_APP_HTTP_API=http://localhost:8000/api/
-REACT_APP_WS_API=ws://localhost:8000/ws/
-Start the stack
-docker compose up --build
-Run database migrations
+### 2) Build and start stack
 
-Open a shell in the API container:
+```bash
+docker compose up --build -d
+```
 
-docker exec -it flap_api bash
+### 3) Run migrations
 
-Then run:
+```bash
+./scripts/migrate.sh
+```
 
-python manage.py migrate
-Access the app
-Frontend: http://localhost:3000
-Backend API: http://localhost:8000
-Auth endpoints: http://localhost:8000/api/auth/
-Registry endpoints: http://localhost:8000/api/
-Websocket base paths: /ws/plot, /ws/analysis, /ws/registry
-Common development tasks
-Create new migrations
-docker exec -it flap_api bash
-python manage.py makemigrations
-python manage.py migrate
-Rebuild the stack
-docker compose down
-docker compose up --build
-View logs
-docker compose logs -f
-Current state and important warnings
+### 4) Verify health
 
-This repository is valuable but not yet production-hardened.
+```bash
+curl http://localhost:8000/api/healthz/
+```
 
-Current code and configuration indicate several issues that must be addressed before using this stack as a trusted system of record:
+### 5) Access app
 
-secrets and database credentials are currently hardcoded in the repository
-Django is configured with permissive development defaults
-the current Compose setup should not be assumed to provide production-grade persistence
-backup, restore, and disaster recovery workflows are not yet documented in this repository
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- Auth endpoints: http://localhost:8000/api/auth/
+- Registry endpoints: http://localhost:8000/api/
+- Websocket base paths: `/ws/plot`, `/ws/analysis`, `/ws/registry`
 
-Treat the current Docker Compose setup as a local development environment, not as a secure production deployment.
+## Backup and restore (local runbook)
 
-Production direction
+Create a backup dump:
 
-The intended production target for Flapjack is:
+```bash
+./scripts/backup_db.sh
+```
 
-managed PostgreSQL for durable primary storage
-environment-based secrets only
-encrypted backups and restore documentation
-Redis for ephemeral channel-layer and cache concerns only
-object storage for large uploaded data if file volume grows beyond database suitability
-separate development, staging, and production configuration
+Restore from a dump:
 
-See ARCHITECTURE.md and ADR-001.md for the recommended target state.
+```bash
+./scripts/restore_db.sh ./backups/<backup-file>.dump
+```
 
-API and related projects
-API docs: https://flapjacksynbio.github.io/flapjack_api
-Python client: https://github.com/flapjacksynbio/pyFlapjack
-How to work in this repository
-For maintainers
-keep changes small and reversible
-keep Docker Compose runnable
-document architecture changes in this repo
-avoid introducing new secrets into version control
-update docs when runtime behavior changes
-For ChatGPT and Codex
+## Production posture (required)
 
-Start with these files before making major changes:
+This repository is now structured so local development and production expectations are clearly separated.
 
-README.md
-ARCHITECTURE.md
-PRODUCT.md
-AGENT.md
-ADR-001.md
+For production deployments:
 
-Use them as the working contract for the repository. If code and docs diverge, patch the docs or code explicitly rather than silently working around inconsistencies.
+- use managed PostgreSQL as the durable system of record
+- enable encrypted backups and point-in-time recovery
+- provide TLS in transit to app and database endpoints
+- inject secrets via environment/secret manager only
+- keep Redis as ephemeral infrastructure only
+- use object storage for large uploaded artifacts where needed
 
-Next priorities
-remove hardcoded secrets and database credentials
-fix persistence and deployment assumptions
-document backup and restore
-add CI and test coverage for critical paths
-separate local development settings from production settings
+See `ARCHITECTURE.md` and `ADR-001.md` for the target persistence model.
+
+## Maintainer notes
+
+- Keep changes small and reversible.
+- Keep Docker Compose runnable.
+- Never commit secrets.
+- Use migrations for schema changes.
+- Update docs when runtime behavior changes.
+
+## Related projects
+
+- API docs: https://flapjacksynbio.github.io/flapjack_api
+- Python client: https://github.com/flapjacksynbio/pyFlapjack

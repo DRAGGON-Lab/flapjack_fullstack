@@ -142,3 +142,15 @@ The immediate product direction is:
 - preserve user workflows
 - make persistence trustworthy
 - make the repository understandable enough for sustained Codex-assisted development
+
+## Current stabilization deltas
+
+The current stabilization pass adds:
+
+- centralized environment-driven backend configuration
+- fail-fast startup checks for non-development secret and host/cors config
+- health checks for API/db/redis services
+- documented backup/restore scripts for PostgreSQL
+- baseline CI checks for backend and frontend
+
+These changes are intentionally narrow to preserve existing product behavior.
