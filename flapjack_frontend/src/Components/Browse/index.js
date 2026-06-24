@@ -2,9 +2,9 @@ import React from 'react'
 import { Tabs, BackTop } from 'antd'
 import Studies from './Studies'
 import Assays from './Assays'
-import Vectors from './Vectors'
+import Plasmids from './Plasmids'
 import Medias from './Medias'
-import Strains from './Strains'
+import Strains from './Chassis'
 import Signals from './Signals'
 
 const Browse = () => {
@@ -18,14 +18,14 @@ const Browse = () => {
         <Tabs.TabPane tab="Assays" key="2">
           <Assays />
         </Tabs.TabPane>
-        <Tabs.TabPane tab="Vectors" key="3">
-          <Vectors />
+        <Tabs.TabPane tab="Plasmids" key="3">
+          <Plasmids />
         </Tabs.TabPane>
         <Tabs.TabPane tab="Medias" key="4">
           <Medias />
         </Tabs.TabPane>
-        <Tabs.TabPane tab="Strains" key="5">
-          <Strains />
+        <Tabs.TabPane tab="Chassis" key="5">
+          <Chassis />
         </Tabs.TabPane>
         <Tabs.TabPane tab="Signals" key="6">
           <Signals />

@@ -3,41 +3,44 @@ import { useHistory } from 'react-router-dom'
 import { Button, Space, List, Row, Col } from 'antd'
 import BrowseTable from './BrowseTable'
 
-const Strains = () => {
+// previously known as Vectors
+
+const DNAs = () => {
   const history = useHistory()
 
-  const renderUris = (sboluri, record) => {
+  const renderUris = (dnas) => {
+    // eslint-disable-next-line react/prop-types
+    const renderUri = ({ name, sboluri }) => {
       let uri = 'No Sbol Uri'
-      if (sboluri) {
+      if (sboluri)
         uri = (
-          <Button 
-            type="link"
-            href={sboluri}
-            size="small">
+          <Button type="link" href={sboluri} size="small">
             Go to SynBioHub
           </Button>
         )
-      }
-      
       return (
-        <List size="small">
-          <List.Item key={0}>
-            <Row style={{ width: '100%' }}>
-              <Col span={14}>{uri}</Col>
-            </Row>
-          </List.Item>
-        </List>
+        <Row gutter={10} style={{ width: '100%' }}>
+          <Col span={10}>{name}:</Col>
+          <Col span={14}>{uri}</Col>
+        </Row>
       )
     }
+
+    return (
+      <List size="small">
+        {dnas.map((dna, i) => (
+          <List.Item key={i}>{renderUri(dna)}</List.Item>
+        ))}
+      </List>
+    )
+  }
 
   const renderActions = (text, record) => {
     const handleViewClick = () => {
       // Redirect to View screen with selected parameters
       history.push({
         pathname: '/view',
-        state: {
-          strain: { id: record.id, name: record.name },
-        },
+        state: { plasmid: { id: record.id, name: record.name } },
       })
     }
 
@@ -51,9 +54,7 @@ const Strains = () => {
   const columns = [
     {
       title: 'Name',
-      key: 'name',
       dataIndex: 'name',
-      sorter: (a, b) => a.name.localeCompare(b.name),
     },
     {
       title: 'Id',
@@ -61,14 +62,8 @@ const Strains = () => {
       key: 'id',
     },
     {
-      title: 'Description',
-      key: 'desc',
-      dataIndex: 'description',
-    },
-    {
-      title: 'SBOL URI',
-      dataIndex: 'sboluri',
-      key: 'sboluri',
+      title: 'Sbol Uris',
+      dataIndex: 'dnas',
       render: renderUris,
     },
     {
@@ -78,9 +73,9 @@ const Strains = () => {
     },
   ]
 
-  return <BrowseTable dataUrl="strain/" columns={columns} />
+  return <BrowseTable dataUrl="plasmidall/" columns={columns} />
 }
 
-Strains.propTypes = {}
+DNAs.propTypes = {}
 
-export default Strains
+export default DNAs
